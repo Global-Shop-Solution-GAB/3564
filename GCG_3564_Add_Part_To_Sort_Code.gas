@@ -1,0 +1,63 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.sRev.Declare(String)
+V.Local.sCol.Declare(String)
+V.Local.sWid.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sRet.Declare(String)
+
+'Post Part selection hook
+F.Intrinsic.Control.If(V.Caller.Hook,=,11245)
+	F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+	V.Local.sPart.Set(V.Passed.000112)
+	V.Local.sRev.Set(V.Passed.000133)
+	'Creating PartRev String
+	F.Intrinsic.String.GSSPartString(V.Local.sPart,V.Local.sRev,V.Local.sPart)
+	'SQL query for browser, removing any options where the Customer value is empty
+	F.Intrinsic.String.Build("SELECT CUSTOMER_PART,CUSTOMER FROM V_INV_CROSS_REF WHERE PART = '{0}' AND CUSTOMER <> ''",V.Local.sPart,V.Local.sSQL)
+	F.ODBC.Connection!con.OpenLocalRecordsetRO("rst",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rst.EOF,=,False)
+		'Launch browser
+		F.Intrinsic.String.Split("Customer Part*!*Custom","*!*",V.Local.sCol)
+		F.Intrinsic.String.Split("3000*!*2000","*!*",V.Local.sWid)
+		F.Intrinsic.UI.Browser("Customer Part","con",V.Local.sSQL,V.Local.sCol,V.Local.sWid,V.Local.sRet)
+		F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+		'If user doesn't select an option set Sort Code to empty string, otherwise set Sort Code to selected Customer Part
+		F.Intrinsic.Control.If(V.Local.sRet(0),<>,"***CANCEL***")
+			V.Passed.000129.Set(V.Local.sRet(0))
+		F.Intrinsic.Control.Else
+			V.Passed.000129.Set("")
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		V.Passed.000129.Set("")
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_3564_Add_Part_To_Sort_Code.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$Add Part To Sort Code on Router Lin$}$BCC$}$1/26/2016
+${$1$}$$}$$}$0$}$11245$}$RES010A-PWC-BROWSE-POST-HOOK$}$1/27/2016 3:49:48 PM$}$(Program: RE0072; Screen: RES010A)
+
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$This GAB script will add the Customer Part field from the inventory browser on the Router Line screen to the Sort Code field when a Part is selected.
+Program.Sub.Comments.End
+
